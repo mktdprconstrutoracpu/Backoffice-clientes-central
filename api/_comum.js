@@ -48,7 +48,13 @@ async function quemPediu(req) {
   const token = String(req.headers.authorization || '').replace(/^Bearer\s+/i, '');
   if (!token) return { erro: [401, 'Entre no backoffice.'] };
   const r = await fetch(URL_SB + '/auth/v1/user', { headers: { apikey: CHAVE, Authorization: 'Bearer ' + token } });
-  if (!r.ok) return { erro: [401, 'Sessao vencida. Entre de novo.'] };
+  if (!r.ok) {
+    // o Supabase recusa tanto login vencido quanto chave errada; separa os dois para a mensagem nao enganar
+    const texto = await r.text().catch(() => '');
+    // login vencido/ruim: 403 com "bad_jwt" ou "session_not_found"; chave errada: 401 vazio ou "Invalid API key"
+    if (!/jwt|session|token/i.test(texto)) return { erro: [500, 'A chave de servico do Supabase na Vercel (SUPABASE_SERVICE_ROLE_KEY) esta errada.'] };
+    return { erro: [401, 'Sessao vencida. Entre de novo.'] };
+  }
   const u = await r.json();
   const email = String(u.email || '').trim().toLowerCase();
   const lista = AUTORIZADOS.map((e) => String(e).trim().toLowerCase());

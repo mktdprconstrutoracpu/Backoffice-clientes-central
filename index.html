@@ -395,13 +395,32 @@
   function avisar(texto, tipo) { const a = $('aviso'); a.textContent = texto; a.className = 'aviso' + (tipo === 'erro' ? ' erro' : ''); a.hidden = false; clearTimeout(relogioAviso); relogioAviso = setTimeout(() => { a.hidden = true; }, 5000); }
   function tela(qual) { ['telaEntrar', 'telaSemAcesso', 'app'].forEach((t) => { $(t).hidden = t !== qual; }); }
 
+  // pedido ao servidor com o login atual. Se o servidor disser que o login venceu (401), renova o login e
+  // tenta mais uma vez; se ainda assim nao der, sai e volta para a tela de entrada.
   async function api(caminho, opcoes) {
+    const pedir = async (token) => {
+      const r = await fetch(caminho, Object.assign({ headers: { Authorization: 'Bearer ' + token, 'Content-Type': 'application/json' } }, opcoes || {}));
+      let corpo = {}; try { corpo = await r.json(); } catch (e) { corpo = { erro: 'Resposta inesperada do servidor (' + r.status + ').' }; }
+      return { r, corpo };
+    };
     const { data } = await sb.auth.getSession();
-    const token = data && data.session ? data.session.access_token : '';
-    const r = await fetch(caminho, Object.assign({ headers: { Authorization: 'Bearer ' + token, 'Content-Type': 'application/json' } }, opcoes || {}));
-    let corpo = {}; try { corpo = await r.json(); } catch (e) { corpo = { erro: 'Resposta inesperada do servidor (' + r.status + ').' }; }
+    let { r, corpo } = await pedir(data && data.session ? data.session.access_token : '');
+    if (r.status === 401) {
+      let novo = null;
+      try { const ren = await sb.auth.refreshSession(); novo = ren && ren.data && ren.data.session; } catch (e) { novo = null; }
+      if (novo) ({ r, corpo } = await pedir(novo.access_token));
+      if (r.status === 401) { await loginVencido(); const e = new Error('Sua sessão venceu. Entre de novo.'); e.status = 401; e.tratado = true; throw e; }
+    }
     if (!r.ok) { const e = new Error(corpo.erro || ('Erro ' + r.status)); e.status = r.status; throw e; }
     return corpo;
+  }
+  async function loginVencido() {
+    try { await sb.auth.signOut(); } catch (e) { /* segue */ }
+    estado.sessao = null; estado.clientes = [];
+    fecharFicha();
+    $('senha').value = '';
+    $('recadoEntrar').textContent = 'Sua sessão venceu. Entre de novo.';
+    tela('telaEntrar');
   }
 
   // ---- entrar / sair

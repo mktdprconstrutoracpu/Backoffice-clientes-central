@@ -1,0 +1,399 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="robots" content="noindex, nofollow">
+<title>Clientes da Central DPR</title>
+<!-- ============================================================================
+     BACKOFFICE DE CLIENTES DA CENTRAL DPR (18/11/2026)
+     A equipe ve todas as contas que se cadastraram na Central, com as casas,
+     saldo e parcelas de cada uma, e pode ENTRAR NA CENTRAL COMO O CLIENTE sem a
+     senha dele (link de entrada de uso unico, gerado no servidor). Cada entrada
+     fica no historico. Quem pode usar: autorizados.js (so e-mails; a senha e a
+     da conta do Supabase). Os dados vem de api/ (chave de servico na Vercel).
+     ============================================================================ -->
+<link rel="icon" href="logo-dpr-transparente.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Archivo:wght@600;700;800;900&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="autorizados.js"></script>
+<style>
+  :root {
+    --accent: #e10600; --primary: #15161a; --text: #2a2c31; --text-light: #6f737b;
+    --border: #e6e2db; --gray-50: #f3f0ea; --lighter: #f4f1ec; --white: #fff;
+    --verde: #2e7d32; --ambar: #b26a00;
+    --display: 'Archivo', 'Inter', sans-serif;
+    --sombra: 0 1px 2px rgba(18, 19, 22, .04), 0 10px 30px rgba(18, 19, 22, .05);
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; }
+  body { font-family: 'Inter', sans-serif; font-size: 14px; color: var(--text); background: var(--lighter); -webkit-font-smoothing: antialiased; min-height: 100vh; }
+  [hidden] { display: none !important; }
+  button, input, select { font: inherit; color: inherit; }
+  h1, h2, h3 { font-family: var(--display); color: var(--primary); letter-spacing: -.02em; margin: 0; }
+  .rotulo { font-size: 10.5px; font-weight: 700; letter-spacing: .12em; text-transform: uppercase; color: var(--text-light); }
+  .bt { appearance: none; border: 1.5px solid var(--primary); background: var(--white); color: var(--primary); border-radius: 999px; min-height: 40px; padding: 0 18px; font-weight: 700; cursor: pointer; display: inline-flex; align-items: center; gap: 8px; white-space: nowrap; }
+  .bt:hover { background: var(--primary); color: var(--white); }
+  .bt.cheio { background: var(--accent); border-color: var(--accent); color: var(--white); }
+  .bt.cheio:hover { background: #c40500; border-color: #c40500; }
+  .bt.leve { border-color: var(--border); font-weight: 600; }
+  .bt.leve:hover { background: var(--gray-50); color: var(--primary); }
+  .bt.mini { min-height: 32px; padding: 0 12px; font-size: 12.5px; }
+  .bt:disabled { opacity: .45; cursor: default; pointer-events: none; }
+  .bt svg { width: 16px; height: 16px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+  .bt:focus-visible, .campo input:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+  .campo { display: flex; flex-direction: column; gap: 6px; }
+  .campo label { font-size: 10.5px; font-weight: 700; letter-spacing: .12em; text-transform: uppercase; color: var(--text-light); }
+  .campo input, .campo select { width: 100%; min-height: 44px; padding: 10px 14px; border: 1px solid var(--border); border-radius: 12px; background: var(--white); outline: none; }
+  .campo input:focus { border-color: var(--accent); }
+
+  /* entrada */
+  .entrada { min-height: 100vh; display: grid; place-items: center; padding: 24px; background: #0f1013; }
+  .entrada-cartao { width: min(420px, 100%); background: var(--white); border-radius: 22px; padding: 36px 32px; display: grid; gap: 16px; box-shadow: 0 30px 80px rgba(0, 0, 0, .35); }
+  .entrada-cartao img { width: 120px; }
+  .entrada-cartao h1 { font-size: 26px; }
+  .entrada-cartao p { margin: 0; color: var(--text-light); line-height: 1.5; }
+  .recado { min-height: 18px; font-size: 13px; color: var(--accent); }
+
+  /* topo */
+  .topo { position: sticky; top: 0; z-index: 10; background: rgba(244, 241, 236, .92); backdrop-filter: blur(8px); border-bottom: 1px solid var(--border); }
+  .topo-dentro { max-width: 1240px; margin: 0 auto; padding: 12px 24px; display: flex; align-items: center; gap: 20px; }
+  .topo img { width: 70px; }
+  .marca { font-family: var(--display); font-weight: 800; color: var(--primary); line-height: 1.1; }
+  .marca small { display: block; font-family: 'Inter', sans-serif; font-size: 10px; letter-spacing: .14em; text-transform: uppercase; color: var(--text-light); font-weight: 700; }
+  .nav { display: flex; gap: 4px; margin-left: 12px; }
+  .nav button { appearance: none; border: 0; background: none; padding: 8px 12px; border-radius: 10px; font-weight: 600; color: var(--text-light); cursor: pointer; }
+  .nav button.ativo { background: var(--white); color: var(--primary); box-shadow: var(--sombra); }
+  .quem { margin-left: auto; text-align: right; font-size: 12.5px; color: var(--text-light); }
+  .quem b { display: block; color: var(--primary); }
+  main { max-width: 1240px; margin: 0 auto; padding: 28px 24px 60px; }
+
+  /* resumo */
+  .resumo { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 12px; margin: 18px 0 22px; }
+  .resumo button { appearance: none; text-align: left; border: 1px solid var(--border); background: var(--white); border-radius: 16px; padding: 14px 16px; cursor: pointer; box-shadow: var(--sombra); }
+  .resumo button.ativo { border-color: var(--accent); box-shadow: 0 0 0 2px rgba(225, 6, 0, .15); }
+  .resumo strong { display: block; font-family: var(--display); font-size: 26px; color: var(--primary); font-variant-numeric: tabular-nums; }
+  .resumo span { font-size: 12px; color: var(--text-light); }
+  .ferramentas { display: flex; gap: 12px; align-items: center; flex-wrap: wrap; margin-bottom: 14px; }
+  .busca { flex: 1 1 280px; position: relative; }
+  .busca input { width: 100%; min-height: 44px; padding: 10px 14px 10px 40px; border: 1px solid var(--border); border-radius: 12px; background: var(--white); outline: none; }
+  .busca svg { position: absolute; left: 13px; top: 13px; width: 18px; height: 18px; fill: none; stroke: var(--text-light); stroke-width: 2; }
+  .conta { color: var(--text-light); font-size: 13px; }
+  .equipe-chave { display: inline-flex; gap: 8px; align-items: center; font-size: 13px; color: var(--text-light); cursor: pointer; }
+
+  /* tabela */
+  .tabela { background: var(--white); border-radius: 18px; box-shadow: var(--sombra); overflow-x: auto; }
+  table { width: 100%; border-collapse: collapse; min-width: 860px; }
+  th { text-align: left; font-size: 10.5px; letter-spacing: .1em; text-transform: uppercase; color: var(--text-light); padding: 14px 16px; border-bottom: 1px solid var(--border); white-space: nowrap; }
+  td { padding: 12px 16px; border-bottom: 1px solid var(--gray-50); vertical-align: middle; }
+  tr.linha { cursor: pointer; }
+  tr.linha:hover td { background: #faf8f4; }
+  td.num { text-align: right; font-variant-numeric: tabular-nums; white-space: nowrap; }
+  .nome { font-weight: 700; color: var(--primary); }
+  .email { font-size: 12.5px; color: var(--text-light); }
+  .selo { display: inline-flex; align-items: center; padding: 3px 9px; border-radius: 999px; font-size: 11.5px; font-weight: 700; white-space: nowrap; }
+  .selo.ok { background: rgba(46, 125, 50, .1); color: var(--verde); }
+  .selo.espera { background: rgba(178, 106, 0, .1); color: var(--ambar); }
+  .selo.atraso { background: rgba(225, 6, 0, .1); color: var(--accent); }
+  .selo.equipe { background: var(--primary); color: var(--white); }
+  .selo.cinza { background: var(--gray-50); color: var(--text-light); }
+  .vazio { padding: 40px; text-align: center; color: var(--text-light); }
+
+  /* ficha */
+  .fundo { position: fixed; inset: 0; background: rgba(15, 16, 19, .45); z-index: 20; }
+  .ficha { position: fixed; top: 0; right: 0; bottom: 0; width: min(560px, 100%); background: var(--lighter); z-index: 21; overflow-y: auto; box-shadow: -20px 0 60px rgba(0, 0, 0, .18); }
+  .ficha-topo { position: sticky; top: 0; background: var(--lighter); padding: 20px 24px 14px; border-bottom: 1px solid var(--border); display: flex; gap: 12px; align-items: flex-start; }
+  .ficha-topo h2 { font-size: 22px; }
+  .ficha-topo .fechar { margin-left: auto; }
+  .ficha-corpo { padding: 20px 24px 40px; display: grid; gap: 18px; }
+  .bloco { background: var(--white); border-radius: 16px; padding: 18px; box-shadow: var(--sombra); }
+  .dados { display: grid; grid-template-columns: 1fr 1fr; gap: 12px 16px; margin: 0; }
+  .dados dt { font-size: 10.5px; letter-spacing: .1em; text-transform: uppercase; color: var(--text-light); font-weight: 700; }
+  .dados dd { margin: 3px 0 0; font-weight: 600; color: var(--primary); word-break: break-word; }
+  .casa { border-top: 1px solid var(--gray-50); padding-top: 12px; margin-top: 12px; display: grid; gap: 6px; }
+  .casa:first-of-type { border-top: 0; padding-top: 0; margin-top: 8px; }
+  .casa-nome { font-weight: 800; color: var(--primary); font-family: var(--display); }
+  .casa-linha { display: flex; flex-wrap: wrap; gap: 6px 14px; font-size: 13px; color: var(--text-light); }
+  .casa-linha b { color: var(--primary); }
+  .entrar-como { display: grid; gap: 10px; }
+  .entrar-como p { margin: 0; font-size: 13px; color: var(--text-light); line-height: 1.5; }
+  .aviso { position: fixed; left: 50%; bottom: 24px; transform: translateX(-50%); z-index: 40; background: var(--primary); color: var(--white); padding: 12px 18px; border-radius: 14px; font-weight: 600; max-width: min(560px, calc(100% - 32px)); box-shadow: 0 16px 40px rgba(0, 0, 0, .25); }
+  .aviso.erro { background: var(--accent); }
+
+  @media (max-width: 860px) {
+    .resumo { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    .topo-dentro { flex-wrap: wrap; padding: 10px 16px; gap: 10px; }
+    .nav { margin-left: 0; order: 3; width: 100%; }
+    main { padding: 18px 16px 50px; }
+    .dados { grid-template-columns: 1fr; }
+  }
+</style>
+</head>
+<body>
+
+<!-- ENTRAR -->
+<div class="entrada" id="telaEntrar" hidden>
+  <form class="entrada-cartao" id="formEntrar">
+    <img src="logo-dpr-transparente.png" alt="DPR Construtora">
+    <h1>Clientes da Central</h1>
+    <p>Entre com a sua conta da DPR (a mesma do Financeiro).</p>
+    <div class="campo"><label for="email">E-mail</label><input type="email" id="email" autocomplete="email" required></div>
+    <div class="campo"><label for="senha">Senha</label><input type="password" id="senha" autocomplete="current-password" required></div>
+    <div class="recado" id="recadoEntrar" role="alert"></div>
+    <button class="bt cheio" type="submit" id="btEntrar">Entrar</button>
+  </form>
+</div>
+
+<!-- SEM ACESSO -->
+<div class="entrada" id="telaSemAcesso" hidden>
+  <div class="entrada-cartao">
+    <img src="logo-dpr-transparente.png" alt="DPR Construtora">
+    <h1>Sem acesso</h1>
+    <p id="semAcessoTexto">Este e-mail não está na lista de autorizados do backoffice.</p>
+    <button class="bt leve" type="button" id="btSairSem">Sair</button>
+  </div>
+</div>
+
+<!-- APP -->
+<div id="app" hidden>
+  <header class="topo"><div class="topo-dentro">
+    <img src="logo-dpr-transparente.png" alt="DPR">
+    <div class="marca">Clientes da Central<small>Backoffice DPR</small></div>
+    <nav class="nav">
+      <button type="button" class="ativo" data-aba="clientes">Clientes</button>
+      <button type="button" data-aba="historico">Histórico de acessos</button>
+    </nav>
+    <div class="quem"><b id="quemEmail"></b><button class="bt leve mini" type="button" id="btSair">Sair</button></div>
+  </div></header>
+
+  <main>
+    <section id="abaClientes">
+      <h1>Clientes</h1>
+      <div class="resumo" id="resumo"></div>
+      <div class="ferramentas">
+        <label class="busca"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="M20 20l-4-4"/></svg><input type="search" id="busca" placeholder="Buscar por nome, e-mail, casa ou empreendimento" aria-label="Buscar"></label>
+        <label class="equipe-chave"><input type="checkbox" id="mostrarEquipe"> Mostrar contas da equipe</label>
+        <span class="conta" id="conta"></span>
+        <button class="bt leve mini" type="button" id="btAtualizar">Atualizar</button>
+      </div>
+      <div class="tabela"><table>
+        <thead><tr><th>Cliente</th><th>Cadastro</th><th>E-mail</th><th>Último acesso</th><th>Casas</th><th class="num">Saldo devedor</th><th>Parcelas</th></tr></thead>
+        <tbody id="linhas"></tbody>
+      </table></div>
+    </section>
+
+    <section id="abaHistorico" hidden>
+      <h1>Histórico de acessos</h1>
+      <p class="conta">Cada vez que alguém da equipe entra na Central como um cliente, fica registrado aqui.</p>
+      <div class="tabela"><table>
+        <thead><tr><th>Quando</th><th>Quem da equipe</th><th>Cliente</th></tr></thead>
+        <tbody id="linhasHistorico"></tbody>
+      </table></div>
+    </section>
+  </main>
+</div>
+
+<!-- FICHA DO CLIENTE -->
+<div class="fundo" id="fundo" hidden></div>
+<aside class="ficha" id="ficha" hidden aria-labelledby="fichaNome">
+  <div class="ficha-topo">
+    <div><div class="rotulo">Cliente</div><h2 id="fichaNome"></h2><div class="email" id="fichaEmail"></div></div>
+    <button class="bt leve mini fechar" type="button" id="btFechar">Fechar</button>
+  </div>
+  <div class="ficha-corpo">
+    <div class="bloco entrar-como">
+      <button class="bt cheio" type="button" id="btEntrarComo"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4M10 17l5-5-5-5M15 12H3"/></svg>Entrar na Central como este cliente</button>
+      <p id="entrarComoNota">Abre a Central numa aba nova, já na conta do cliente, sem a senha dele. Fica registrado no histórico. Ao terminar, clique em Sair na Central.</p>
+    </div>
+    <div class="bloco"><dl class="dados" id="fichaDados"></dl></div>
+    <div class="bloco"><div class="rotulo">Casas na Central</div><div id="fichaCasas"></div></div>
+  </div>
+</aside>
+
+<div class="aviso" id="aviso" role="status" hidden></div>
+
+<script>
+(function () {
+  const SUPABASE_URL = 'https://roashkfdjgsweuftqhyx.supabase.co';
+  const SUPABASE_PUBLISHABLE_KEY = 'sb_publishable_T4u8FTh9_VvBtW7Ycxw4FQ_dHu0n5tT';
+  const sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY);
+  const $ = (id) => document.getElementById(id);
+  const estado = { sessao: null, clientes: [], filtro: 'clientes', busca: '', equipe: false, aberto: null };
+
+  const esc = (s) => String(s == null ? '' : s).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+  const reais = (v) => (v == null || v === '' ? '—' : Number(v).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' }));
+  const dataBR = (iso) => { if (!iso) return '—'; const d = new Date(iso); return d.toLocaleDateString('pt-BR') + ' ' + d.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }); };
+  const diaBR = (iso) => (iso ? new Date(iso).toLocaleDateString('pt-BR') : '—');
+  const sem = (s) => String(s || '').normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase();
+  let relogioAviso = null;
+  function avisar(texto, tipo) { const a = $('aviso'); a.textContent = texto; a.className = 'aviso' + (tipo === 'erro' ? ' erro' : ''); a.hidden = false; clearTimeout(relogioAviso); relogioAviso = setTimeout(() => { a.hidden = true; }, 5000); }
+  function tela(qual) { ['telaEntrar', 'telaSemAcesso', 'app'].forEach((t) => { $(t).hidden = t !== qual; }); }
+
+  async function api(caminho, opcoes) {
+    const { data } = await sb.auth.getSession();
+    const token = data && data.session ? data.session.access_token : '';
+    const r = await fetch(caminho, Object.assign({ headers: { Authorization: 'Bearer ' + token, 'Content-Type': 'application/json' } }, opcoes || {}));
+    let corpo = {}; try { corpo = await r.json(); } catch (e) { corpo = { erro: 'Resposta inesperada do servidor (' + r.status + ').' }; }
+    if (!r.ok) { const e = new Error(corpo.erro || ('Erro ' + r.status)); e.status = r.status; throw e; }
+    return corpo;
+  }
+
+  // ---- entrar / sair
+  const autorizados = (window.AUTORIZADOS || []).map((e) => String(e).toLowerCase());
+  async function aoEntrar(sessao) {
+    estado.sessao = sessao;
+    const email = String(sessao.user.email || '').toLowerCase();
+    if (autorizados.indexOf(email) < 0) { $('semAcessoTexto').textContent = email + ' não está na lista de autorizados do backoffice (autorizados.js).'; tela('telaSemAcesso'); return; }
+    $('quemEmail').textContent = email;
+    tela('app');
+    carregar();
+  }
+  $('formEntrar').addEventListener('submit', async (ev) => {
+    ev.preventDefault();
+    $('recadoEntrar').textContent = '';
+    $('btEntrar').disabled = true;
+    const { data, error } = await sb.auth.signInWithPassword({ email: $('email').value.trim().toLowerCase(), password: $('senha').value });
+    $('btEntrar').disabled = false;
+    if (error) { $('recadoEntrar').textContent = /invalid login/i.test(error.message) ? 'E-mail ou senha incorretos.' : 'Não foi possível entrar. Tente de novo.'; return; }
+    aoEntrar(data.session);
+  });
+  async function sair() { try { await sb.auth.signOut(); } catch (e) { /* sai mesmo assim */ } location.reload(); }
+  $('btSair').addEventListener('click', sair);
+  $('btSairSem').addEventListener('click', sair);
+
+  // ---- abas
+  document.querySelectorAll('.nav button').forEach((b) => b.addEventListener('click', () => {
+    document.querySelectorAll('.nav button').forEach((x) => x.classList.toggle('ativo', x === b));
+    $('abaClientes').hidden = b.dataset.aba !== 'clientes';
+    $('abaHistorico').hidden = b.dataset.aba !== 'historico';
+    if (b.dataset.aba === 'historico') carregarHistorico();
+  }));
+
+  // ---- clientes
+  function resumoDe(c) {
+    const casas = c.casas.filter((x) => x.situacao === 'aprovado');
+    return {
+      casas,
+      saldo: casas.reduce((s, x) => s + (Number(x.saldo_devedor_atual) || 0), 0),
+      temSaldo: casas.some((x) => x.saldo_devedor_atual != null),
+      parcelas: casas.reduce((s, x) => s + (x.parcelas || 0), 0),
+      pagas: casas.reduce((s, x) => s + (x.pagas || 0), 0),
+      atrasadas: casas.reduce((s, x) => s + (x.atrasadas || 0), 0),
+      pendentes: c.casas.filter((x) => x.situacao === 'pendente').length
+    };
+  }
+  const FILTROS = [
+    ['clientes', 'clientes', (c) => true],
+    ['confirmados', 'confirmaram o código', (c) => !!c.confirmado_em],
+    ['semconfirmar', 'sem confirmar', (c) => !c.confirmado_em],
+    ['semcasa', 'sem casa liberada', (c) => resumoDe(c).casas.length === 0],
+    ['atraso', 'com parcela em atraso', (c) => resumoDe(c).atrasadas > 0]
+  ];
+  async function carregar() {
+    $('linhas').innerHTML = '<tr><td colspan="7" class="vazio">Carregando...</td></tr>';
+    try {
+      const r = await api('/api/clientes');
+      estado.clientes = r.clientes || [];
+      desenhar();
+    } catch (e) {
+      if (e.status === 403) { $('semAcessoTexto').textContent = e.message; tela('telaSemAcesso'); return; }
+      $('linhas').innerHTML = '<tr><td colspan="7" class="vazio">' + esc(e.message) + '</td></tr>';
+    }
+  }
+  function visiveis() {
+    const base = estado.clientes.filter((c) => estado.equipe || !c.equipe);
+    const f = FILTROS.find((x) => x[0] === estado.filtro)[2];
+    const b = sem(estado.busca);
+    return base.filter(f).filter((c) => !b || sem([c.nome, c.email].concat(c.casas.map((x) => (x.empreendimento || '') + ' ' + (x.unidade || '') + ' ' + (x.comprador || ''))).join(' ')).includes(b));
+  }
+  function desenhar() {
+    const base = estado.clientes.filter((c) => estado.equipe || !c.equipe);
+    $('resumo').innerHTML = FILTROS.map(([k, rot, f]) => '<button type="button" data-filtro="' + k + '"' + (estado.filtro === k ? ' class="ativo"' : '') + '><strong>' + base.filter(f).length + '</strong><span>' + rot + '</span></button>').join('');
+    const lista = visiveis();
+    $('conta').textContent = lista.length + (lista.length === 1 ? ' conta' : ' contas');
+    if (!lista.length) { $('linhas').innerHTML = '<tr><td colspan="7" class="vazio">Nenhuma conta neste filtro.</td></tr>'; return; }
+    $('linhas').innerHTML = lista.map((c) => {
+      const r = resumoDe(c);
+      const casas = r.casas.length ? r.casas.map((x) => esc((x.unidade || '') + (x.empreendimento ? ' · ' + x.empreendimento : ''))).join('<br>') : (r.pendentes ? '<span class="selo espera">' + r.pendentes + ' pedido(s) pendente(s)</span>' : '<span class="selo cinza">nenhuma</span>');
+      const parcelas = r.parcelas ? (r.pagas + ' de ' + r.parcelas + ' pagas' + (r.atrasadas ? ' <span class="selo atraso">' + r.atrasadas + ' em atraso</span>' : '')) : '—';
+      return '<tr class="linha" data-id="' + esc(c.id) + '" tabindex="0">'
+        + '<td><div class="nome">' + esc(c.nome || '(sem nome)') + (c.equipe ? ' <span class="selo equipe">equipe</span>' : '') + '</div><div class="email">' + esc(c.email) + '</div></td>'
+        + '<td>' + diaBR(c.criado_em) + '</td>'
+        + '<td>' + (c.confirmado_em ? '<span class="selo ok">confirmado</span>' : '<span class="selo espera">sem confirmar</span>') + '</td>'
+        + '<td>' + dataBR(c.ultimo_acesso) + '</td>'
+        + '<td>' + casas + '</td>'
+        + '<td class="num">' + (r.temSaldo ? reais(r.saldo) : '—') + '</td>'
+        + '<td>' + parcelas + '</td></tr>';
+    }).join('');
+  }
+  $('resumo').addEventListener('click', (ev) => { const b = ev.target.closest('[data-filtro]'); if (b) { estado.filtro = b.dataset.filtro; desenhar(); } });
+  $('busca').addEventListener('input', () => { estado.busca = $('busca').value; desenhar(); });
+  $('mostrarEquipe').addEventListener('change', () => { estado.equipe = $('mostrarEquipe').checked; desenhar(); });
+  $('btAtualizar').addEventListener('click', carregar);
+  $('linhas').addEventListener('click', (ev) => { const tr = ev.target.closest('tr.linha'); if (tr) abrirFicha(tr.dataset.id); });
+  $('linhas').addEventListener('keydown', (ev) => { if (ev.key === 'Enter') { const tr = ev.target.closest('tr.linha'); if (tr) abrirFicha(tr.dataset.id); } });
+
+  // ---- ficha
+  function abrirFicha(id) {
+    const c = estado.clientes.find((x) => x.id === id); if (!c) return;
+    estado.aberto = c;
+    $('fichaNome').textContent = c.nome || '(sem nome)';
+    $('fichaEmail').textContent = c.email;
+    const r = resumoDe(c);
+    $('fichaDados').innerHTML = [
+      ['Cadastro', dataBR(c.criado_em)], ['E-mail confirmado', c.confirmado_em ? dataBR(c.confirmado_em) : 'Ainda não'],
+      ['Último acesso', dataBR(c.ultimo_acesso)], ['Tipo de conta', c.equipe ? 'Equipe da DPR' : 'Cliente'],
+      ['Saldo devedor (casas liberadas)', r.temSaldo ? reais(r.saldo) : '—'], ['Parcelas', r.parcelas ? r.pagas + ' de ' + r.parcelas + ' pagas, ' + r.atrasadas + ' em atraso' : '—']
+    ].map((x) => '<div><dt>' + x[0] + '</dt><dd>' + esc(x[1]) + '</dd></div>').join('');
+    $('fichaCasas').innerHTML = c.casas.length ? c.casas.map((x) => '<div class="casa"><div class="casa-nome">' + esc((x.unidade || 'Casa ' + x.id) + (x.empreendimento ? ' · ' + x.empreendimento : '')) + '</div>'
+      + '<div class="casa-linha"><span>Acesso: <b>' + esc({ aprovado: 'liberado', pendente: 'pendente', recusado: 'recusado' }[x.situacao] || x.situacao) + '</b></span><span>Contrato: <b>' + esc(x.status_contrato || '—') + '</b></span><span>Comprador: <b>' + esc(x.comprador || '—') + '</b></span></div>'
+      + '<div class="casa-linha"><span>Saldo: <b>' + reais(x.saldo_devedor_atual) + '</b></span><span>Parcelas: <b>' + (x.parcelas ? x.pagas + ' de ' + x.parcelas + ' pagas' : '—') + '</b></span>' + (x.atrasadas ? '<span class="selo atraso">' + x.atrasadas + ' em atraso</span>' : '') + '</div></div>').join('') : '<p class="conta">Nenhuma casa ligada a esta conta.</p>';
+    const pode = !!c.confirmado_em;
+    $('btEntrarComo').disabled = !pode;
+    $('entrarComoNota').textContent = pode
+      ? 'Abre a Central numa aba nova, já na conta do cliente, sem a senha dele. Fica registrado no histórico. Ao terminar, clique em Sair na Central.'
+      : 'Este cliente ainda não confirmou o e-mail com o código. Só dá para entrar na conta depois da confirmação.';
+    $('fundo').hidden = false; $('ficha').hidden = false; $('btFechar').focus();
+  }
+  function fecharFicha() { $('fundo').hidden = true; $('ficha').hidden = true; estado.aberto = null; }
+  $('btFechar').addEventListener('click', fecharFicha);
+  $('fundo').addEventListener('click', fecharFicha);
+  document.addEventListener('keydown', (ev) => { if (ev.key === 'Escape' && !$('ficha').hidden) fecharFicha(); });
+
+  // ---- entrar como o cliente: a aba abre ANTES do pedido (senao o navegador bloqueia o pop-up)
+  $('btEntrarComo').addEventListener('click', async () => {
+    const c = estado.aberto; if (!c) return;
+    if (!window.confirm('Entrar na Central como ' + (c.nome || c.email) + '? Isso fica registrado no histórico.')) return;
+    const janela = window.open('', '_blank');
+    $('btEntrarComo').disabled = true;
+    try {
+      const r = await api('/api/entrar-como', { method: 'POST', body: JSON.stringify({ id: c.id }) });
+      if (janela) janela.location = r.link; else window.location = r.link;
+      avisar('Central aberta na conta de ' + r.cliente + '.');
+    } catch (e) {
+      if (janela) janela.close();
+      avisar(e.message, 'erro');
+    } finally {
+      $('btEntrarComo').disabled = false;
+    }
+  });
+
+  // ---- historico
+  async function carregarHistorico() {
+    $('linhasHistorico').innerHTML = '<tr><td colspan="3" class="vazio">Carregando...</td></tr>';
+    try {
+      const r = await api('/api/historico');
+      $('linhasHistorico').innerHTML = (r.acessos || []).map((a) => '<tr><td>' + dataBR(a.quando) + '</td><td>' + esc(a.equipe_email) + '</td><td><div class="nome">' + esc(a.cliente_nome || '') + '</div><div class="email">' + esc(a.cliente_email) + '</div></td></tr>').join('') || '<tr><td colspan="3" class="vazio">Nenhum acesso ainda.</td></tr>';
+    } catch (e) {
+      $('linhasHistorico').innerHTML = '<tr><td colspan="3" class="vazio">' + esc(e.message) + '</td></tr>';
+    }
+  }
+
+  // ---- abertura
+  sb.auth.getSession().then(({ data }) => { if (data && data.session) aoEntrar(data.session); else tela('telaEntrar'); });
+})();
+</script>
+</body>
+</html>

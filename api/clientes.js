@@ -19,14 +19,16 @@ module.exports = async (req, res) => {
       if (lote.length < 1000) break;
     }
     // 2. vinculos, casas e parcelas
+    const CAMPOS_CASA = 'id,empreendimento,unidade,comprador,status_contrato,valor_venda,saldo_devedor_atual';
     const [vinc, unid, parc] = await Promise.all([
       tudo('/rest/v1/vinculos?select=user_id,unidade_id,situacao,criado_em'),
-      tudo('/rest/v1/unidades?select=id,empreendimento,unidade,comprador,status_contrato,valor_venda,saldo_devedor_atual,email_comprador,email_conjuge'),
+      tudo('/rest/v1/unidades?select=' + CAMPOS_CASA + ',email_comprador,email_conjuge,cpf_comprador,cpf_conjuge'),
       tudo('/rest/v1/parcelas?select=unidade_id,pago,data_vencimento')
     ]);
     if (!vinc.ok || !unid.ok || !parc.ok) {
-      // sem as colunas de e-mail (sql/003 da Central), le as casas sem elas
-      const unid2 = unid.ok ? unid : await tudo('/rest/v1/unidades?select=id,empreendimento,unidade,comprador,status_contrato,valor_venda,saldo_devedor_atual');
+      // sem as colunas de CPF (sql/004) ou de e-mail (sql/003) da Central, le as casas com o que houver
+      let unid2 = unid.ok ? unid : await tudo('/rest/v1/unidades?select=' + CAMPOS_CASA + ',email_comprador,email_conjuge');
+      if (!unid2.ok) unid2 = await tudo('/rest/v1/unidades?select=' + CAMPOS_CASA);
       if (!vinc.ok || !unid2.ok || !parc.ok) return responder(res, 502, { erro: 'Nao consegui ler vinculos, casas ou parcelas.' });
       unid.dados = unid2.dados; unid.ok = true;
     }
@@ -54,6 +56,8 @@ module.exports = async (req, res) => {
     const vincPorUser = {};
     vinc.dados.forEach((v) => { (vincPorUser[v.user_id] = vincPorUser[v.user_id] || []).push(v); });
 
+    // o casaPorId deixa de levar e-mail e CPF para a tela (so servem para achar quem ainda nao entrou)
+    Object.values(casaPorId).forEach((c) => { delete c.email_comprador; delete c.email_conjuge; delete c.cpf_comprador; delete c.cpf_conjuge; });
     const clientes = usuarios.map((u) => {
       const email = String(u.email || '').toLowerCase();
       const casas = (vincPorUser[u.id] || []).map((v) => Object.assign({ situacao: v.situacao, pedido_em: v.criado_em }, casaPorId[v.unidade_id] || { id: v.unidade_id }));
@@ -67,7 +71,31 @@ module.exports = async (req, res) => {
         equipe: emailsEquipe.has(email) || idsEquipe.has(u.id),
         casas
       };
-    }).sort((a, b) => String(b.criado_em).localeCompare(String(a.criado_em)));
+    });
+
+    // 4. (20/11/2026) quem esta cadastrado nas casas (e-mail do comprador ou do conjuge) e ainda
+    //    nao tem conta: com o login por e-mail + CPF, a conta so nasce no primeiro acesso a Central.
+    //    Antes eles nao apareciam ("so 18 cadastros"). Vem com sem_login e as casas desse e-mail.
+    const comConta = new Set(clientes.map((c) => c.email));
+    const cadastro = {};
+    unid.dados.forEach((u) => {
+      [['email_comprador', 'cpf_comprador', u.comprador], ['email_conjuge', 'cpf_conjuge', '']].forEach(([ce, cc, nome]) => {
+        const e = String(u[ce] || '').trim().toLowerCase();
+        if (!e || comConta.has(e)) return;
+        const p = cadastro[e] || (cadastro[e] = { email: e, nome: '', semCpf: false, casas: [] });
+        if (nome && !p.nome) p.nome = String(nome).trim();
+        if (cc in u && !u[cc]) p.semCpf = true;   // sem CPF a pessoa nao consegue entrar (o CPF e a senha)
+        if (!p.casas.some((x) => x.id === u.id)) p.casas.push(Object.assign({ situacao: 'cadastro' }, casaPorId[u.id] || { id: u.id }));
+      });
+    });
+    Object.values(cadastro).forEach((p) => clientes.push({
+      id: 'cadastro:' + p.email, email: p.email, nome: p.nome, criado_em: null, confirmado_em: null, ultimo_acesso: null,
+      equipe: emailsEquipe.has(p.email), sem_login: true, sem_cpf: p.semCpf, casas: p.casas
+    }));
+    // contas mais novas primeiro; quem ainda nao entrou vem depois, por nome
+    clientes.sort((a, b) => (a.sem_login === b.sem_login)
+      ? (a.sem_login ? String(a.nome || a.email).localeCompare(String(b.nome || b.email), 'pt-BR') : String(b.criado_em).localeCompare(String(a.criado_em)))
+      : (a.sem_login ? 1 : -1));
     return responder(res, 200, { clientes, quem: quem.email });
   } catch (e) {
     return responder(res, 500, { erro: 'Falha inesperada: ' + (e && e.message) });

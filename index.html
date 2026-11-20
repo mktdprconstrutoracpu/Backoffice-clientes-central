@@ -280,7 +280,43 @@
   .troca-decisao { margin: 0; font-size: 13px; color: var(--text-light); }
   .bt.cheio.perigo { background: var(--primary); border-color: var(--primary); box-shadow: none; }
   .bt[disabled] { opacity: .5; cursor: not-allowed; }
+
+  /* (20/11/2026) CONVERSAS DO CHAT: o cartao usa o .troca; aqui so o que e da conversa */
+  .conv-aberta[hidden], .troca-acoes .bt[hidden] { display: none; }
+  .troca[data-situacao="aguardando"] { border-left-color: var(--ambar); }
+  .troca[data-situacao="nova"] { border-left-color: var(--accent); }
+  .conv-barra { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 12px; max-width: 980px; padding: 14px 18px; background: var(--white); border-radius: var(--raio); box-shadow: var(--sombra); }
+  .conv-barra p { margin: 0; font-size: 13.5px; color: var(--text-light); max-width: 520px; }
+  .conv-chave { display: inline-flex; align-items: center; gap: 10px; font-weight: 700; color: var(--primary); cursor: pointer; }
+  .conv-chave input { appearance: none; width: 44px; height: 26px; border-radius: 999px; background: var(--border); position: relative; cursor: pointer; transition: background .2s; flex: 0 0 auto; margin: 0; }
+  .conv-chave input::after { content: ''; position: absolute; top: 3px; left: 3px; width: 20px; height: 20px; border-radius: 50%; background: var(--white); box-shadow: 0 1px 3px rgba(0, 0, 0, .25); transition: transform .2s; }
+  .conv-chave input:checked { background: #1f8a4c; }
+  .conv-chave input:checked::after { transform: translateX(18px); }
+  .conv-chave input:focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; }
+  .conv-filtros { display: flex; flex-wrap: wrap; gap: 8px; }
+  .conv-filtros button { appearance: none; border: 1.5px solid var(--border); background: var(--white); border-radius: 999px; padding: 7px 14px; font: inherit; font-size: 13.5px; font-weight: 700; color: var(--text); cursor: pointer; }
+  .conv-filtros button.ativo { border-color: var(--primary); background: var(--primary); color: var(--white); }
+  .conv-ultima { margin: 0; font-size: 14px; color: var(--text); overflow-wrap: anywhere; }
+  .conv-ultima b { color: var(--text-light); font-weight: 700; }
+  .conv-selos { display: flex; flex-wrap: wrap; gap: 6px; }
+  .conv-aberta { display: grid; gap: 12px; }
+  .conv-falas { display: grid; gap: 8px; max-height: 420px; overflow-y: auto; padding: 12px; border: 1.5px solid var(--border); border-radius: 12px; background: var(--fundo); }
+  .conv-fala { max-width: 85%; padding: 8px 12px; border-radius: 12px; font-size: 14px; line-height: 1.45; white-space: pre-wrap; overflow-wrap: anywhere; }
+  .conv-fala small { display: block; margin-top: 3px; font-size: 11px; opacity: .7; }
+  .conv-fala.ana { justify-self: start; background: var(--white); color: var(--text); }
+  .conv-fala.equipe { justify-self: start; background: var(--white); color: var(--primary); box-shadow: inset 3px 0 0 var(--accent); }
+  .conv-fala.cliente { justify-self: end; background: var(--primary); color: var(--white); }
+  .conv-responder { display: grid; gap: 8px; }
+  .conv-responder textarea { width: 100%; padding: 10px 12px; border: 1.5px solid var(--border); border-radius: 10px; font: inherit; font-size: 15px; resize: vertical; }
+  .conv-responder textarea:focus { outline: none; border-color: var(--accent); box-shadow: 0 0 0 4px var(--accent-leve); }
+  .conv-responder label.marca { display: inline-flex; align-items: center; gap: 8px; font-size: 13.5px; font-weight: 600; color: var(--text); }
+  a.bt { text-decoration: none; }
   @media (max-width: 760px) {
+    /* (20/11/2026) com 4 abas a fileira passava de 390 px e esticava a pagina: no celular, 2 por linha */
+    .nav { grid-auto-flow: row; grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    .nav button { justify-content: flex-start; min-width: 0; }
+    .conv-fala { max-width: 92%; }
+    .conv-barra { padding: 14px 16px; }
     .troca { padding: 16px; }
     .troca-emails { grid-template-columns: 1fr; gap: 8px; }
     .troca-emails .ic { transform: rotate(90deg); justify-self: start; }
@@ -337,6 +373,8 @@
       <button type="button" class="ativo" data-aba="clientes"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M16 20v-1.5a3.5 3.5 0 0 0-3.5-3.5h-5A3.5 3.5 0 0 0 4 18.5V20M10 11a3.5 3.5 0 1 0 0-7 3.5 3.5 0 0 0 0 7M20 20v-1.5a3.5 3.5 0 0 0-2.5-3.35M15.5 4.2a3.5 3.5 0 0 1 0 6.6"/></svg>Clientes<span class="contador" id="navConta">0</span></button>
       <!-- (20/11/2026) pedidos de troca do e-mail de acesso feitos pelo cliente na Central -->
       <button type="button" data-aba="trocas"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 6.5h16v11H4z"/><path d="M4.5 7l7.5 6 7.5-6"/></svg>Alteração de e-mail<span class="contador alerta" id="navTrocas" hidden>0</span></button>
+      <!-- (20/11/2026) o chat da Central: a equipe ve as conversas, pausa o robo e responde -->
+      <button type="button" data-aba="conversas"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 5h16v11H9l-5 4z"/><path d="M8.5 10.5h.01M12 10.5h.01M15.5 10.5h.01"/></svg>Conversas<span class="contador alerta" id="navConversas" hidden>0</span></button>
       <button type="button" data-aba="historico"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M3 12a9 9 0 1 0 3-6.7L3 8M3 3v5h5M12 7v5l3 2"/></svg>Histórico de acessos</button>
     </nav>
     <div class="lateral-pe">
@@ -369,6 +407,24 @@
         <div class="cabeca-acoes"><button class="bt" type="button" id="btAtualizarTrocas"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M20 11a8 8 0 1 0-2.3 5.7M20 4v7h-7"/></svg>Atualizar</button></div>
       </div>
       <div class="trocas" id="listaTrocas"></div>
+    </section>
+
+    <section id="abaConversas" hidden>
+      <div class="cabeca">
+        <div><h1>Conversas do chat</h1><p>Tudo o que os clientes escrevem no chat da Central. A Ana responde pelo roteiro; a equipe pode pausar o robô numa conversa (ou para todos) e responder por aqui.</p></div>
+        <div class="cabeca-acoes"><button class="bt" type="button" id="btAtualizarConversas"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M20 11a8 8 0 1 0-2.3 5.7M20 4v7h-7"/></svg>Atualizar</button></div>
+      </div>
+      <div class="trocas">
+        <div class="conv-barra">
+          <label class="conv-chave"><input type="checkbox" id="roboGeral" checked> <span id="roboGeralTexto">Robô ligado para todos</span></label>
+          <p id="roboGeralNota">Desligado, a Ana não responde ninguém: toda mensagem fica aguardando a equipe.</p>
+        </div>
+        <div class="conv-filtros" role="group" aria-label="Filtrar conversas">
+          <button type="button" class="ativo" data-filtro-conv="aguardando">Aguardando a equipe</button>
+          <button type="button" data-filtro-conv="todas">Todas</button>
+        </div>
+        <div class="trocas" id="listaConversas"></div>
+      </div>
     </section>
 
     <section id="abaHistorico" hidden>
@@ -477,6 +533,8 @@
     tela('app');
     carregar();
     carregarTrocas(true);   // so o numero de pendentes no menu
+    carregarConversas(true);  // idem, conversas aguardando a equipe ou com mensagem nova
+    setInterval(() => carregarConversas(!$('abaConversas').hidden ? 'manter' : true), 60000);  // de minuto em minuto
   }
   $('formEntrar').addEventListener('submit', async (ev) => {
     ev.preventDefault();
@@ -496,9 +554,11 @@
     document.querySelectorAll('.nav button').forEach((x) => x.classList.toggle('ativo', x === b));
     $('abaClientes').hidden = b.dataset.aba !== 'clientes';
     $('abaTrocas').hidden = b.dataset.aba !== 'trocas';
+    $('abaConversas').hidden = b.dataset.aba !== 'conversas';
     $('abaHistorico').hidden = b.dataset.aba !== 'historico';
     if (b.dataset.aba === 'historico') carregarHistorico();
     if (b.dataset.aba === 'trocas') carregarTrocas();
+    if (b.dataset.aba === 'conversas') carregarConversas();
   }));
 
   // ---- (20/11/2026) alteracao de e-mail: pedidos do cliente na Central (api/troca-email.js)
@@ -569,6 +629,158 @@
     }
   });
   $('btAtualizarTrocas').addEventListener('click', () => carregarTrocas());
+
+  // ---- (20/11/2026) conversas do chat da Central (api/conversas.js): a Ana responde pelo roteiro;
+  // a equipe ve tudo, pausa o robo numa conversa ou para todos, e responde a mao.
+  estado.filtroConv = 'aguardando';
+  estado.convAberta = null;   // user_id da conversa aberta (continua aberta quando a lista atualiza)
+  const PAPEL_CONV = { cliente: 'Cliente', ana: 'Ana (robô)', equipe: 'Equipe' };
+  const precisaEquipe = (c) => c.aguardando_equipe || c.nao_lida;
+  // telefone so com digitos; sem o 55 na frente, poe
+  const whatsDe = (t) => { const d = String(t || '').replace(/\D/g, ''); return d.length >= 10 ? 'https://wa.me/' + (d.length <= 11 ? '55' + d : d) : ''; };
+  // modo: undefined = carrega e desenha; true = so o contador do menu; 'manter' = atualizacao automatica
+  // com a aba aberta (so redesenha se ninguem estiver com uma conversa aberta)
+  async function carregarConversas(modo) {
+    if (modo === undefined) $('listaConversas').innerHTML = '<p class="vazio">Carregando as conversas...</p>';
+    try {
+      const r = await api('/api/conversas');
+      estado.conversas = r.conversas || [];
+      estado.roboLigado = r.robo_ligado !== false;
+      const n = estado.conversas.filter(precisaEquipe).length;
+      $('navConversas').textContent = n; $('navConversas').hidden = n === 0;
+      desenharRoboGeral();
+      if (modo === undefined || (modo === 'manter' && !estado.convAberta)) desenharConversas();
+    } catch (e) {
+      if (modo === undefined && !e.tratado) $('listaConversas').innerHTML = '<p class="vazio">' + esc(e.message) + '</p>';
+    }
+  }
+  function desenharRoboGeral() {
+    $('roboGeral').checked = estado.roboLigado;
+    $('roboGeralTexto').textContent = estado.roboLigado ? 'Robô ligado para todos' : 'Robô desligado para todos';
+    $('roboGeralNota').textContent = estado.roboLigado
+      ? 'A Ana responde pelo roteiro. Desligado, ela não responde ninguém: toda mensagem fica aguardando a equipe.'
+      : 'A Ana não está respondendo: toda mensagem nova fica aguardando a equipe responder por aqui.';
+  }
+  function desenharConversas() {
+    const todas = estado.conversas || [];
+    const lista = estado.filtroConv === 'aguardando' ? todas.filter(precisaEquipe) : todas;
+    document.querySelectorAll('[data-filtro-conv]').forEach((b) => {
+      b.classList.toggle('ativo', b.dataset.filtroConv === estado.filtroConv);
+      if (b.dataset.filtroConv === 'aguardando') b.textContent = 'Aguardando a equipe (' + todas.filter(precisaEquipe).length + ')';
+      if (b.dataset.filtroConv === 'todas') b.textContent = 'Todas (' + todas.length + ')';
+    });
+    if (!lista.length) {
+      $('listaConversas').innerHTML = '<p class="vazio">' + (todas.length ? 'Nenhuma conversa aguardando a equipe.' : 'Nenhum cliente usou o chat ainda.') + '</p>';
+      return;
+    }
+    $('listaConversas').innerHTML = lista.map((c) => {
+      const sit = c.aguardando_equipe ? 'aguardando' : c.nao_lida ? 'nova' : 'normal';
+      const casas = String(c.casas || '').split(';').map((s) => s.trim()).filter(Boolean).map((s) => '<span class="casa-chip">' + esc(s) + '</span>').join('');
+      const wa = whatsDe(c.telefone);
+      const selos = (c.aguardando_equipe ? '<span class="selo espera">aguardando a equipe</span>' : '')
+        + (c.nao_lida && !c.aguardando_equipe ? '<span class="selo atraso">mensagem nova</span>' : '')
+        + (c.robo_pausado ? '<span class="selo cinza">robô pausado</span>' : '');
+      return '<article class="troca" data-conv="' + esc(c.user_id) + '" data-situacao="' + sit + '">'
+        + '<div class="troca-topo"><div class="pessoa"><span class="avatar ' + corDe({ id: c.email }) + '">' + esc(iniciais({ nome: c.nome, email: c.email })) + '</span><div style="min-width:0"><div class="nome">' + esc(nomeBonito(c.nome) || c.email || '(sem nome)') + '</div><div class="email">' + esc(c.email || '') + ' · ' + esc(haQuanto(c.ultima_em)) + '</div></div></div><div class="conv-selos">' + selos + '</div></div>'
+        + (casas ? '<div class="troca-casas">' + casas + '</div>' : '')
+        + (c.ultima_texto ? '<p class="conv-ultima"><b>' + esc(PAPEL_CONV[c.ultima_papel] || '') + ':</b> ' + esc(c.ultima_texto) + '</p>' : '')
+        + '<div class="troca-acoes"><button class="bt cheio" type="button" data-abrir-conv>Abrir conversa</button>'
+        + (wa ? '<a class="bt" href="' + wa + '" target="_blank" rel="noopener">WhatsApp do cliente</a>' : (c.email ? '<a class="bt" href="mailto:' + esc(c.email) + '">E-mail do cliente</a>' : '')) + '</div>'
+        + '<div class="conv-aberta" hidden></div>'
+        + '</article>';
+    }).join('');
+    if (estado.convAberta) {
+      const art = document.querySelector('[data-conv="' + CSS.escape(estado.convAberta) + '"]');
+      if (art) abrirConversa(art, estado.rascunho); else estado.convAberta = null;
+    }
+  }
+  async function abrirConversa(art, rascunho) {
+    const uid = art.dataset.conv, caixa = art.querySelector('.conv-aberta'), bt = art.querySelector('[data-abrir-conv]');
+    document.querySelectorAll('.conv-aberta').forEach((x) => { if (x !== caixa) { x.hidden = true; x.innerHTML = ''; const b = x.closest('.troca').querySelector('[data-abrir-conv]'); if (b) b.textContent = 'Abrir conversa'; } });
+    estado.convAberta = uid; estado.rascunho = '';
+    caixa.hidden = false; bt.textContent = 'Fechar conversa';
+    caixa.innerHTML = '<p class="vazio">Carregando a conversa...</p>';
+    try {
+      const r = await api('/api/conversas?user=' + encodeURIComponent(uid));
+      const c = r.conversa, m = r.mensagens || [];
+      caixa.innerHTML = '<div class="conv-falas">' + (m.length ? m.map((x) => '<div class="conv-fala ' + (x.papel === 'cliente' ? 'cliente' : x.papel === 'equipe' ? 'equipe' : 'ana') + '">' + esc(x.texto) + '<small>' + esc(PAPEL_CONV[x.papel] || x.papel) + (x.papel === 'equipe' && x.autor ? ' (' + esc(x.autor) + ')' : '') + ' · ' + esc(dataBR(x.criado_em)) + '</small></div>').join('') : '<p class="vazio">Sem mensagens.</p>') + '</div>'
+        + '<div class="troca-acoes">'
+          + (c.robo_pausado ? '<button class="bt" type="button" data-conv-acao="retomar">Retomar o robô nesta conversa</button>' : '<button class="bt" type="button" data-conv-acao="pausar">Pausar o robô nesta conversa</button>')
+          + (c.aguardando_equipe ? '<button class="bt" type="button" data-conv-acao="resolver">Marcar como resolvida</button>' : '')
+        + '</div>'
+        + (c.robo_pausado ? '<p class="troca-decisao">Robô pausado por ' + esc(c.pausado_por || '—') + ' em ' + esc(dataBR(c.pausado_em)) + ': a Ana não responde este cliente até a equipe retomar.</p>' : '')
+        + '<div class="conv-responder"><textarea rows="3" maxlength="2000" placeholder="Escreva a resposta para o cliente (ele vê no chat da Central)"></textarea>'
+          + (c.robo_pausado ? '' : '<label class="marca"><input type="checkbox" data-pausar-ao checked> Pausar o robô nesta conversa ao responder</label>')
+          + '<div class="troca-acoes"><button class="bt cheio" type="button" data-enviar-conv>Enviar resposta</button></div></div>';
+      const falas = caixa.querySelector('.conv-falas'); falas.scrollTop = falas.scrollHeight;
+      if (rascunho) caixa.querySelector('textarea').value = rascunho;
+      // abrir marca como lida: tira o selo "mensagem nova" e acerta o contador
+      const x = (estado.conversas || []).find((y) => y.user_id === uid);
+      if (x && x.nao_lida) {
+        x.nao_lida = false;
+        const sel = art.querySelector('.selo.atraso'); if (sel) sel.remove();
+        if (!x.aguardando_equipe) art.dataset.situacao = 'normal';
+        const n = estado.conversas.filter(precisaEquipe).length;
+        $('navConversas').textContent = n; $('navConversas').hidden = n === 0;
+      }
+    } catch (e) {
+      if (!e.tratado) caixa.innerHTML = '<p class="vazio">' + esc(e.message) + '</p>';
+    }
+  }
+  function fecharConversa(art) {
+    const caixa = art.querySelector('.conv-aberta');
+    caixa.hidden = true; caixa.innerHTML = '';
+    art.querySelector('[data-abrir-conv]').textContent = 'Abrir conversa';
+    estado.convAberta = null;
+  }
+  async function acaoConversa(art, corpo, bt, aviso) {
+    bt.disabled = true;
+    const ta = art.querySelector('.conv-aberta textarea');
+    estado.rascunho = corpo.acao === 'responder' ? '' : (ta ? ta.value : '');
+    try {
+      const r = await api('/api/conversas', { method: 'POST', body: JSON.stringify(Object.assign({ user_id: art.dataset.conv }, corpo)) });
+      avisar(r.aviso || aviso);
+      await carregarConversas('manter-aberta');
+      desenharConversas();
+    } catch (e) {
+      bt.disabled = false;
+      if (!e.tratado) avisar(e.message, 'erro');
+    }
+  }
+  $('listaConversas').addEventListener('click', (ev) => {
+    const art = ev.target.closest('.troca'); if (!art) return;
+    const ab = ev.target.closest('[data-abrir-conv]');
+    if (ab) { if (estado.convAberta === art.dataset.conv) fecharConversa(art); else abrirConversa(art); return; }
+    const ac = ev.target.closest('[data-conv-acao]');
+    if (ac) {
+      const a = ac.dataset.convAcao;
+      acaoConversa(art, { acao: a }, ac, a === 'pausar' ? 'Robô pausado nesta conversa: a equipe responde.' : a === 'retomar' ? 'Robô retomado nesta conversa.' : 'Conversa marcada como resolvida.');
+      return;
+    }
+    const en = ev.target.closest('[data-enviar-conv]');
+    if (en) {
+      const texto = art.querySelector('.conv-aberta textarea').value.trim();
+      if (!texto) { avisar('Escreva a resposta antes de enviar.', 'erro'); return; }
+      const pa = art.querySelector('[data-pausar-ao]');
+      acaoConversa(art, { acao: 'responder', texto, pausar: !!(pa && pa.checked) }, en, 'Resposta enviada: o cliente vê no chat da Central.');
+    }
+  });
+  document.querySelectorAll('[data-filtro-conv]').forEach((b) => b.addEventListener('click', () => { estado.filtroConv = b.dataset.filtroConv; estado.convAberta = null; desenharConversas(); }));
+  $('roboGeral').addEventListener('change', async () => {
+    const ligar = $('roboGeral').checked;
+    if (!ligar && !window.confirm('Desligar o robô para todos? A Ana para de responder e toda mensagem nova fica aguardando a equipe.')) { $('roboGeral').checked = true; return; }
+    $('roboGeral').disabled = true;
+    try {
+      await api('/api/conversas', { method: 'POST', body: JSON.stringify({ acao: 'robo', ligado: ligar }) });
+      estado.roboLigado = ligar; desenharRoboGeral();
+      avisar(ligar ? 'Robô ligado: a Ana volta a responder.' : 'Robô desligado para todos: a equipe responde.');
+    } catch (e) {
+      $('roboGeral').checked = !ligar;
+      if (!e.tratado) avisar(e.message, 'erro');
+    }
+    $('roboGeral').disabled = false;
+  });
+  $('btAtualizarConversas').addEventListener('click', () => { estado.convAberta = null; carregarConversas(); });
 
   // ---- clientes
   function resumoDe(c) {
